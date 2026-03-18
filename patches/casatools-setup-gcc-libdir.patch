@@ -1,8 +1,10 @@
+diff --git a/casatools/setup.py b/casatools/setup.py
+index 0d5cff4f37..e44976e405 100644
 --- a/casatools/setup.py
 +++ b/casatools/setup.py
 @@ -215,9 +215,17 @@ class XmlCMakeBuildExt(build_ext):
                  fortran_compiler = 'gfortran'
-
+             
              try:
 -                gcc_dir = os.path.join(os.path.dirname(os.path.dirname(shutil.which(fortran_compiler))),'lib','libgcc')
 +                fc_prefix = os.path.dirname(os.path.dirname(shutil.which(fortran_compiler)))
@@ -17,6 +19,6 @@
 +                gcc_dir = os.path.join(fc_prefix, 'lib', 'gcc', 'current')
 +            if not os.path.isdir(gcc_dir):
 +                raise Exception(f"Couldn't find GCC runtime libs under {fc_prefix}/lib. Expected lib/libgcc (MacPorts) or lib/gcc/current (Homebrew).")
-
+             
              casac_lib_dir = extdir + "/casatools/__casac__/lib"
              copy_tree(gcc_dir, casac_lib_dir)

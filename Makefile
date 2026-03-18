@@ -25,6 +25,12 @@
 #
 # This Makefile does not run any test.
 
+# Path to spack_env/patches directory — must be set by user
+PATCHDIR    ?=
+ifneq ($(PATCHDIR),)
+PATCHDIR    := $(realpath $(PATCHDIR))
+endif
+
 CASA_BRANCH         = master
 CASA_REPO           = https://open-bitbucket.nrao.edu:/scm/casa/casa6.git
 CASACORE_DATA_REPO  = ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar
@@ -59,9 +65,6 @@ CASAINSTALL = $(ROOT)/install
 CASATESTDIR = $(ROOT)/test
 CASAVENVDIR = $(ROOT)/venv
 CASABUILD   = $(ROOT)/build
-# Path to spack_env/patches directory — must be set by user
-PATCHDIR    ?=
-
 #INSTALLPREFIX  = $(CASAINSTALL)
 #
 # Common options to install artifacts of all packages in a single location
@@ -194,11 +197,11 @@ $(CASAVENVDIR)/bin/activate:
 
 casatools-patch:
 	@cd $(CASASRC) && \
-		if git apply --reverse --check $(PATCHDIR)/casatools-setup-gcc-libdir.patch 2>/dev/null; then \
+		if patch -p1 --batch --ignore-whitespace --reverse --dry-run < $(PATCHDIR)/casatools-setup-gcc-libdir.patch >/dev/null 2>&1; then \
 			echo "casatools patch already applied"; \
 		else \
 			echo "Applying casatools-setup-gcc-libdir.patch"; \
-			git apply $(PATCHDIR)/casatools-setup-gcc-libdir.patch; \
+			patch -p1 --batch --ignore-whitespace < $(PATCHDIR)/casatools-setup-gcc-libdir.patch; \
 		fi
 
 casatools: casacpp casatools-patch casatools-wheel
