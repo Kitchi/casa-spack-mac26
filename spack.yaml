@@ -22,8 +22,6 @@ spack:
     - xerces-c
     - libxml2
     - libxslt
-    - protobuf
-    - grpc
 
     # MPI
     - openmpi
@@ -41,6 +39,20 @@ spack:
         - spec: gcc@15.2.0 languages=c,c++,fortran
           prefix: /opt/homebrew
         - spec: gcc@15.2.0 languages=c,c++,fortran
+          prefix: /opt/local
+    protobuf:
+      buildable: false
+      externals:
+        - spec: protobuf@34.0
+          prefix: /opt/homebrew
+        - spec: protobuf@34.0
+          prefix: /opt/local
+    grpc:
+      buildable: false
+      externals:
+        - spec: grpc@1.78.1
+          prefix: /opt/homebrew
+        - spec: grpc@1.78.1
           prefix: /opt/local
 
   concretizer:
