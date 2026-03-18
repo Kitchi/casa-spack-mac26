@@ -2,6 +2,11 @@
 
 Spack environment for CASA6 build dependencies on macOS (ARM64).
 
+> **Note:** This build recipe was developed with LLM assistance (Claude) but has
+> been debugged and verified to produce a working build through every stage of the
+> CASA6 build pipeline (libsakura, casacore, casacpp, casatools, casatasks,
+> casashell).
+
 ## Prerequisites
 
 - **Xcode** (with command line tools)
@@ -71,6 +76,21 @@ the following changes for Spack/ARM64 compatibility:
   casacore's pkgconfig `-l` flags resolve correctly
 - **System pkgconfig**: Auto-detects Homebrew or MacPorts prefix and appends it to
   `PKG_CONFIG_PATH` so grpc/protobuf `.pc` files are found
+
+## Patches
+
+The `patches/` directory contains patches to CASA source that are needed for
+Homebrew/MacPorts compatibility:
+
+- **casatools-setup-gcc-libdir.patch**: Fixes `casatools/setup.py` to find GCC
+  runtime libs on both MacPorts (`lib/libgcc`) and Homebrew (`lib/gcc/current`).
+
+Apply before building:
+
+```bash
+cd /path/to/casa6
+git apply /path/to/spack_env/patches/casatools-setup-gcc-libdir.patch
+```
 
 ## Custom Packages
 
