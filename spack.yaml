@@ -6,6 +6,7 @@ spack:
     - gcc@15          # provides gfortran
     - pkgconf
     - swig
+    - bison
 
     # Java (needed by CASA build tooling)
     - openjdk@11
