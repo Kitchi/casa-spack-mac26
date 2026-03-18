@@ -59,6 +59,8 @@ CASAINSTALL = $(ROOT)/install
 CASATESTDIR = $(ROOT)/test
 CASAVENVDIR = $(ROOT)/venv
 CASABUILD   = $(ROOT)/build
+# Path to spack_env/patches directory — must be set by user
+PATCHDIR    ?=
 
 #INSTALLPREFIX  = $(CASAINSTALL)
 #
@@ -72,7 +74,18 @@ CASABUILD   = $(ROOT)/build
 #--------------------------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------------------------
 
-firstcasa: init casa-clone libsakura casacore casacpp venv-build casatools casatasks casashell
+check-patchdir:
+	@if [ -z "$(PATCHDIR)" ]; then \
+		echo "ERROR: PATCHDIR is not set. Set it to the spack_env/patches directory, e.g.:"; \
+		echo "  make PATCHDIR=/path/to/spack_env/patches ..."; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(PATCHDIR)" ]; then \
+		echo "ERROR: PATCHDIR=$(PATCHDIR) does not exist."; \
+		exit 1; \
+	fi
+
+firstcasa: check-patchdir init casa-clone libsakura casacore casacpp venv-build casatools casatasks casashell
 	@echo  ========================================
 	@echo  CASA has been built successfully.
 	@echo You can run it with:
@@ -80,7 +93,7 @@ firstcasa: init casa-clone libsakura casacore casacpp venv-build casatools casat
 	@echo $$ python
 	@echo \>\>\> import casatasks
 
-casa: libsakura casacore casacpp venv-build casatools casatasks casashell
+casa: check-patchdir libsakura casacore casacpp venv-build casatools casatasks casashell
 
 clean:
 	rm -rf $(SRCDIR) $(CASASRC) $(CASABUILD) $(CASAINSTALL) $(CASATESTDIR) $(CASAVENVDIR)
@@ -179,7 +192,16 @@ $(CASAVENVDIR)/bin/activate:
 	python3 -m venv $(CASAVENVDIR)
 	. $(CASAVENVDIR)/bin/activate
 
-casatools: casacpp casatools-wheel
+casatools-patch:
+	@cd $(CASASRC) && \
+		if git apply --reverse --check $(PATCHDIR)/casatools-setup-gcc-libdir.patch 2>/dev/null; then \
+			echo "casatools patch already applied"; \
+		else \
+			echo "Applying casatools-setup-gcc-libdir.patch"; \
+			git apply $(PATCHDIR)/casatools-setup-gcc-libdir.patch; \
+		fi
+
+casatools: casacpp casatools-patch casatools-wheel
 
 casatools-wheel: venv-build
 	if [ -d $(CASABUILD)/casatools ]; then rm -rf $(CASABUILD)/casatools; fi

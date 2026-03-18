@@ -85,11 +85,11 @@ Homebrew/MacPorts compatibility:
 - **casatools-setup-gcc-libdir.patch**: Fixes `casatools/setup.py` to find GCC
   runtime libs on both MacPorts (`lib/libgcc`) and Homebrew (`lib/gcc/current`).
 
-Apply before building:
+Patches are applied automatically by the Makefile's `casatools-patch` target.
+You must set `PATCHDIR` when invoking make:
 
 ```bash
-cd /path/to/casa6
-git apply /path/to/spack_env/patches/casatools-setup-gcc-libdir.patch
+make PATCHDIR=/path/to/casa-spack-mac26/patches firstcasa
 ```
 
 ## Custom Packages
