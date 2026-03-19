@@ -1,4 +1,4 @@
-# CASA Spack Build Environment
+# CASA Spack Build Environment for MacOS
 
 Spack environment for CASA6 build dependencies on macOS (ARM64).
 
@@ -25,6 +25,12 @@ sudo port install gcc15 grpc protobuf3-cpp
 ```
 
 ## Setup
+
+Clone this repository
+
+```bash
+git clone git@github.com:Kitchi/casa-spack-mac26.git /path/to/spack_env
+```
 
 Register the custom package repo (one-time):
 
