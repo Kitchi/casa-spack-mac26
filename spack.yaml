@@ -11,6 +11,9 @@ spack:
     # Java (needed by CASA build tooling)
     - openjdk@11
 
+    # OpenMP runtime for Apple Clang
+    - llvm-openmp
+
     # Core science libraries
     - cfitsio
     - wcslib

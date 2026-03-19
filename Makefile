@@ -53,6 +53,12 @@ PORT_PREFIX := $(shell port -q version >/dev/null 2>&1 && echo /opt/local)
 SYSTEM_PREFIX := $(if $(BREW_PREFIX),$(BREW_PREFIX),$(if $(PORT_PREFIX),$(PORT_PREFIX),))
 SYSTEM_PKG_CONFIG_PATH := $(if $(SYSTEM_PREFIX),$(SYSTEM_PREFIX)/lib/pkgconfig,)
 
+# GCC runtime library directory (for rpath to libgfortran etc.)
+GCC_LIB_DIR := $(shell $(FC) -print-file-name=libgfortran.dylib 2>/dev/null | xargs dirname 2>/dev/null | xargs realpath 2>/dev/null)
+
+# Spack view prefix (for libomp, etc.)
+SPACK_VIEW := $(shell echo $$SPACK_ENV/.spack-env/view 2>/dev/null)
+
 #oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 #--------------------------------------------------------------------------------------------------------
 #
@@ -88,7 +94,29 @@ check-patchdir:
 		exit 1; \
 	fi
 
-firstcasa: check-patchdir init casa-clone libsakura casacore casacpp venv-build casatools casatasks casashell
+check-fc:
+	@if [ -z "$(FC)" ]; then \
+		echo ""; \
+		echo "ERROR: No Fortran compiler found."; \
+		echo ""; \
+		echo "  gfortran is required but was not found in PATH."; \
+		echo "  This can happen if 'spack env deactivate' stripped /opt/homebrew/bin"; \
+		echo "  (or /opt/local/bin) from your PATH — a known Spack bug (spack#48391)."; \
+		echo ""; \
+		echo "  Fix: activate from a fresh shell rather than deactivate/re-activate:"; \
+		echo ""; \
+		echo "    # Open a new terminal, then:"; \
+		echo "    source ~/src/spack/share/spack/setup-env.sh"; \
+		echo "    spack env activate casa-dev"; \
+		echo ""; \
+		echo "  Or install gfortran if missing:"; \
+		echo "    brew install gcc@15    # Homebrew"; \
+		echo "    sudo port install gcc15  # MacPorts"; \
+		echo ""; \
+		exit 1; \
+	fi
+
+firstcasa: check-patchdir check-fc init casa-clone libsakura casacore casacpp venv-build casatools casatasks casashell
 	@echo  ========================================
 	@echo  CASA has been built successfully.
 	@echo You can run it with:
@@ -96,7 +124,7 @@ firstcasa: check-patchdir init casa-clone libsakura casacore casacpp venv-build 
 	@echo $$ python
 	@echo \>\>\> import casatasks
 
-casa: check-patchdir libsakura casacore casacpp venv-build casatools casatasks casashell
+casa: check-patchdir check-fc libsakura casacore casacpp venv-build casatools casatasks casashell
 
 clean:
 	rm -rf $(SRCDIR) $(CASASRC) $(CASABUILD) $(CASAINSTALL) $(CASATESTDIR) $(CASAVENVDIR)
@@ -112,6 +140,8 @@ libsakura:
 
 	mkdir -p $(CASABUILD)/libsakura
 	cmake  \
+		-DCMAKE_C_COMPILER=cc \
+		-DCMAKE_CXX_COMPILER=c++ \
 		-DCMAKE_INSTALL_PREFIX=$(CASAINSTALL) \
 		-DCMAKE_BUILD_TYPE=$(CASA_BUILD_TYPE) \
 		-DBUILD_DOC:BOOL=OFF \
@@ -119,7 +149,8 @@ libsakura:
 		-DSIMD_ARCH=GENERIC \
 		-DENABLE_TEST:BOOL=OFF \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-		-DUseCcache=1 \
+		-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+		-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
 		$(SRCDIR)/sakura-libsakura-$(LIBSAKURA_VERSION)/libsakura/ \
 		-B $(CASABUILD)/libsakura
 
@@ -137,11 +168,15 @@ casacore-configure:
 	mkdir -p $(CASABUILD)/casacore
 	cd $(CASABUILD)/casacore
 	cmake \
+		-DCMAKE_C_COMPILER=cc \
+		-DCMAKE_CXX_COMPILER=c++ \
+		-DCMAKE_Fortran_COMPILER=$(FC) \
+		-DCMAKE_CXX_FLAGS="-Qunused-arguments -flat_namespace" \
 		-DCMAKE_INSTALL_PREFIX=$(CASAINSTALL) \
 		-DDATA_DIR=$(CASAINSTALL)/data \
 		-DCMAKE_BUILD_TYPE=$(CASACORE_BUILD_TYPE) \
-		-DCMAKE_BUILD_PREFIX=$(CASABUILD) \
 		-DUSE_OPENMP=ON \
+		-DOpenMP_ROOT=$(SPACK_VIEW) \
 		-DUSE_THREADS=ON \
 		-DBUILD_FFTPACK_DEPRECATED=ON \
 		-DBUILD_TESTING=OFF \
@@ -149,8 +184,9 @@ casacore-configure:
 		-DBUILD_DYSCO=ON \
 		-DPORTABLE=ON \
 		-DUSE_PCH=OFF \
-		-DUseCcache=1 \
-		-DPRIVATE_LIBS="-framework Accelerate -lm -ldl -Wl,-rpath,/opt/local/lib/libgcc/" \
+		-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+		-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+		-DPRIVATE_LIBS="-framework Accelerate -lm -ldl -Wl,-rpath,$(GCC_LIB_DIR)" \
 		$(CASASRC)/casatools/casacore \
 		-B $(CASABUILD)/casacore
 
@@ -167,14 +203,15 @@ casacpp-configure: clean_casacpp_build $(CASABUILD)/casacpp/Makefile
 clean-casacpp-build:
 	rm -rf $(CASABUILD)/casacpp
 
-$(CASABUILD)/casacpp/Makefile:
+$(CASABUILD)/casacpp/Makefile: check-fc
 	if [ -d $(CASABUILD)/casacpp ]; then rm -rf $(CASABUILD)/casacpp; fi
 	mkdir -p $(CASABUILD)/casacpp
 	PKG_CONFIG_PATH=$(CASAINSTALL)/lib/pkgconfig:$(SYSTEM_PKG_CONFIG_PATH) \
 		cmake \
 		-DCMAKE_C_COMPILER=cc \
 		-DCMAKE_CXX_COMPILER=c++ \
-		-DCMAKE_CXX_FLAGS="-ffp-contract=off -isystem /opt/local/include" \
+		-DCMAKE_Fortran_COMPILER=$(FC) \
+		-DCMAKE_CXX_FLAGS="-ffp-contract=off -isystem $(SYSTEM_PREFIX)/include" \
 		-DCMAKE_INSTALL_PREFIX=$(CASAINSTALL) \
 		-DCMAKE_PREFIX_PATH=$(CASAINSTALL) \
 		-DCMAKE_SHARED_LINKER_FLAGS="-L$(CASAINSTALL)/lib" \
@@ -197,7 +234,7 @@ $(CASAVENVDIR)/bin/activate:
 
 casatools-patch:
 	@cd $(CASASRC) && \
-		if patch -p1 --batch --ignore-whitespace --reverse --dry-run < $(PATCHDIR)/casatools-setup-gcc-libdir.patch >/dev/null 2>&1; then \
+		if grep -q 'lib/gcc/current' casatools/setup.py 2>/dev/null; then \
 			echo "casatools patch already applied"; \
 		else \
 			echo "Applying casatools-setup-gcc-libdir.patch"; \
@@ -218,7 +255,7 @@ casatools-wheel: venv-build
 		. $(CASAVENVDIR)/bin/activate ; \
 		pip install build ; \
 		export CMAKE_BUILD_PARALLEL_LEVEL=$(NCORES) ; \
-		cd $(CASABUILD)/casatools; PKG_CONFIG_PATH=$(CASAINSTALL)/lib/pkgconfig:$(SYSTEM_PKG_CONFIG_PATH) CMAKE_PREFIX_PATH=$(CASAINSTALL):$(SYSTEM_PREFIX) CXXFLAGS="-isystem $(SYSTEM_PREFIX)/include" LDFLAGS="-L$(CASAINSTALL)/lib -L$(SYSTEM_PREFIX)/lib -Wl,-rpath,$(CASAINSTALL)/lib" python3 -m build -o $(CASAINSTALL)/dist $(CASASRC)/casatools ; \
+		cd $(CASABUILD)/casatools; CC=cc CXX=c++ FC=$(FC) PKG_CONFIG_PATH=$(CASAINSTALL)/lib/pkgconfig:$(SYSTEM_PKG_CONFIG_PATH) CMAKE_PREFIX_PATH=$(CASAINSTALL):$(SYSTEM_PREFIX) CXXFLAGS="-isystem $(SYSTEM_PREFIX)/include" LDFLAGS="-L$(CASAINSTALL)/lib -L$(SYSTEM_PREFIX)/lib -Wl,-rpath,$(CASAINSTALL)/lib" python3 -m build -o $(CASAINSTALL)/dist $(CASASRC)/casatools ; \
 		pip uninstall -y casatools ; \
 		pip install $(CASAINSTALL)/dist/casatools*whl ; \
 		pip install casadata ; \
@@ -238,9 +275,9 @@ casatasks-wheel: venv-build
 		pip install --upgrade wheel ; \
 		mkdir -p $(HOME)/.casa/data ; \
 		cd $(CASASRC)/casatasks ; \
-		./setup.py bdist_wheel --bdist-dir=$(CASABUILD)/casatasks/bdist --dist-dir=$(CASAINSTALL)/dist ; \
+		./setup.py bdist_wheel ; \
 		pip uninstall -y casatasks ; \
-		pip install $(CASAINSTALL)/dist/casatasks*whl
+		pip install $(CASASRC)/casatasks/dist/casatasks*.whl
 
 casashell: casatasks casashell-wheel
 
