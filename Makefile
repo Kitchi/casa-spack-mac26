@@ -104,7 +104,7 @@ clean:
 init:
 	mkdir -p $(SRCDIR) $(CASASRC) $(CASABUILD) $(CASAINSTALL) $(CASATESTDIR) $(CASAVENVDIR)
 
-casa-clone:
+casa-clone: init
 	git -C $(SRCDIR) clone -b $(CASA_BRANCH) --recursive $(CASA_REPO)
 
 libsakura:
