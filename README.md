@@ -1,6 +1,13 @@
 # CASA Spack Build Environment for MacOS
 
-Spack environment for CASA6 build dependencies on macOS (ARM64).
+Spack environment for CASA6 build dependencies on macOS (ARM64). Make sure to have the spack default
+setup-env.sh sourced into your shell before running any of the below commands.
+
+```bash
+source ~/path/to/spack_install/share/spack/setup-env.sh
+```
+
+or add that line into your `~/.bashrc` or `~/.zshrc`.
 
 > **Note:** This build recipe was developed with LLM assistance (Claude) but has
 > been debugged and verified to produce a working build through every stage of the
@@ -52,7 +59,6 @@ spack install
 Activate the environment before building CASA:
 
 ```bash
-source ~/src/spack/share/spack/setup-env.sh
 spack env activate casa-dev
 ```
 
