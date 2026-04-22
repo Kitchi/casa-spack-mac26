@@ -1,3 +1,7 @@
+# DEPRECATED
+
+This repo is deprecated. Look at https://github.com/Kitchi/CASA-spack for the most up-to-date build instructions.
+
 # CASA Spack Build Environment for MacOS
 
 Spack environment for CASA6 build dependencies on macOS (ARM64). Make sure to have the spack default
